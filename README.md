@@ -17,33 +17,11 @@ Start localStack. Check that it is running:
 curl http://localhost:4566/_localstack/health
 ```
 
-# Create sample app
 
 ```bash
-# init must be run in an empty directory
-mkdir app
-cd app
-cdklocal init sample-app --language=typescript
+# in `app` dir, run first
+npm install
 
-# bootstrap the localstack environment
-cdklocal bootstrap
-```
-
-Set account id and region of the Stack in app.ts
-
-```typescript
-new AppStack(app,
-  'AppStack',
-  {
-    env: {
-      account: "000000000000", // LocalStack account id
-      region: "eu-north-1"  // Because Stockholm rocks!
-    }
-  }
-);
-```
-
-```bash
 # deploy the sample app
 cdklocal deploy
 ```
@@ -93,21 +71,24 @@ laws apigateway get-rest-apis
 
 ## Refactor!
 
-Place the Lambda and API GW Constructs into a class that extends Construct,
-and place it in a new file.
+Place the Lambda and API GW Constructs into class HelloLambda that extends Construct,
+and place it in the following file: `lib/constructs/hello-lambda/hello-lambda.ts`
+
+Place the lambda handler code in `lib/constructs/hello-lambda/lambda-handler/index.js`
 
 ## Refactor more!
 
-Place the original SNS and Topic Constructs to a new file
-in a class that extends Construct
+Place the original SNS and Topic into class MySQS that extends Construct
+and into the file `lib/constructs/my-sqs/my-sqs.ts` 
 
 
-
-## Deploy Item API
+## EXERCISE X: Deploy Item API
 
 It is a Construct with Rest API (API GW) -> Lambda -> DynamoDB
 
-The lambda ts code has some dependencies.   
+Uncomment it in `app.ts`
+
+The lambda handler TS code has some dependencies.   
 Run `npm install` in `app/lib/constructs/item-api/lambda-handler` 
 to install them.
 
