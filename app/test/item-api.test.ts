@@ -1,12 +1,13 @@
 import * as cdk from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
 import { HelloLambda } from "../lib/constructs/hello-lambda/hello-lambda";
+import { ItemApi } from "../lib/constructs/item-api/item-api";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
 
-test('HelloLambda Construct Test', () => {
+test('ItemApi Construct Test', () => {
   // WHEN
   const stack = new cdk.Stack();
-  const helloLambda = new HelloLambda(stack, 'MyTestHelloLambda', {})
+  const itemApi = new ItemApi(stack, 'MyTestItemApi', {})
 
   // THEN
 
@@ -18,7 +19,7 @@ test('HelloLambda Construct Test', () => {
   template.hasResourceProperties('AWS::Lambda::Function', {
     Runtime: Runtime.NODEJS_22_X.name
   });
-  template.resourceCountIs('AWS::Lambda::Permission', 4);
+  template.resourceCountIs('AWS::Lambda::Permission', 2);
 
   // ApiGateway
   template.resourceCountIs('AWS::ApiGateway::RestApi', 1)

@@ -42,7 +42,7 @@ export class ItemApi extends Construct {
         PRIMARY_KEY: 'itemId',
         TABLE_NAME: dynamoTable.tableName,
       },
-      runtime: Runtime.NODEJS_20_X,
+      runtime: Runtime.NODEJS_22_X,
     }
 
     const createOneLambda = new NodejsFunction(this, 'createItemFunction', {

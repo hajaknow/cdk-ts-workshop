@@ -1,8 +1,7 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { HelloLambda } from "./constructs/hello-lambda/hello-lambda";
 import { MySQS } from "./constructs/my-sqs/my-sqs";
-
+import { HelloLambda } from "./constructs/hello-lambda/hello-lambda";
 // Leave commented until Exercise X!
 // import { ItemApi } from "./constructs/item-api/item-api";
 
@@ -16,8 +15,6 @@ export class AppStack extends Stack {
 
     // Leave commented until Exercise X!
     // new ItemApi(this, 'ItemApi', {})
-
-
 
   }
 }
