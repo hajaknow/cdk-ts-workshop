@@ -6,8 +6,8 @@ test('SQS Queue and SNS Topic Created', () => {
   const app = new cdk.App();
   // WHEN
   const stack = new App.AppStack(app, 'MyTestStack');
-  // THEN
 
+  // THEN
   const template = Template.fromStack(stack);
 
   template.hasResourceProperties('AWS::SQS::Queue', {

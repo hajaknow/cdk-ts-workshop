@@ -6,7 +6,7 @@ import { Runtime } from "aws-cdk-lib/aws-lambda";
 test('HelloLambda Construct Test', () => {
   // WHEN
   const stack = new cdk.Stack();
-  const helloLambda = new HelloLambda(stack, 'MyTestHelloLambda', {})
+  new HelloLambda(stack, 'MyTestHelloLambda', {});
 
   // THEN
 

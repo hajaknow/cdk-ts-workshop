@@ -45,6 +45,11 @@ export class ItemApi extends Construct {
       runtime: Runtime.NODEJS_22_X,
     }
 
+    // Create a Lambda function for each of the CRUD operations
+    const getOneLambda = new NodejsFunction(this, 'getOneItemFunction', {
+      entry: join(__dirname, 'lambda-handler', 'get-one.ts'),
+      ...nodeJsFunctionProps,
+    });
     const createOneLambda = new NodejsFunction(this, 'createItemFunction', {
       entry: join(__dirname, 'lambda-handler', 'create.ts'),
       ...nodeJsFunctionProps,
@@ -52,9 +57,11 @@ export class ItemApi extends Construct {
 
     // Grant the Lambda function read access to the DynamoDB table
     dynamoTable.grantReadWriteData(createOneLambda);
+    dynamoTable.grantReadWriteData(getOneLambda);
 
     // Integrate the Lambda functions with the API Gateway resource
     const createOneIntegration = new LambdaIntegration(createOneLambda);
+    const getOneIntegration = new LambdaIntegration(getOneLambda);
 
 
     // Create an API Gateway resource for each of the CRUD operations
@@ -67,6 +74,10 @@ export class ItemApi extends Construct {
     const items = api.root.addResource('items');
     items.addMethod('POST', createOneIntegration);
     addCorsOptions(items);
+
+    const singleItem = items.addResource('{id}');
+    singleItem.addMethod('GET', getOneIntegration);
+    addCorsOptions(singleItem);
 
 
     function addCorsOptions(apiResource: IResource) {
