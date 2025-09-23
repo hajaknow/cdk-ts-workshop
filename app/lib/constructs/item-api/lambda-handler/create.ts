@@ -16,7 +16,7 @@ export const handler = async (event: any = {}): Promise<any> => {
   }
 
   const item = typeof event.body == 'object' ? event.body : JSON.parse(event.body);
-  item[PRIMARY_KEY] = crypto.randomUUID()
+  item[PRIMARY_KEY] = crypto.randomUUID();
   const params = {
     TableName: TABLE_NAME,
     Item: item

@@ -1,7 +1,7 @@
-import * as cdk from "aws-cdk-lib";
-import { Template } from "aws-cdk-lib/assertions";
-import { ItemApi } from "../lib/constructs/item-api/item-api";
-import { Runtime } from "aws-cdk-lib/aws-lambda";
+import * as cdk from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
+import { ItemApi } from '../lib/constructs/item-api/item-api';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 
 test('ItemApi Construct Test', () => {
   // WHEN
@@ -17,7 +17,7 @@ test('ItemApi Construct Test', () => {
   // Lambda
   // --------------
 
-  template.resourceCountIs('AWS::Lambda::Function', 2)
+  template.resourceCountIs('AWS::Lambda::Function', 2);
   template.hasResourceProperties('AWS::Lambda::Function', {
     Runtime: Runtime.NODEJS_22_X.name
   });
@@ -27,15 +27,15 @@ test('ItemApi Construct Test', () => {
   // ApiGateway
   // --------------
 
-  template.resourceCountIs('AWS::ApiGateway::RestApi', 1)
-  template.resourceCountIs('AWS::ApiGateway::Deployment', 1)
+  template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
+  template.resourceCountIs('AWS::ApiGateway::Deployment', 1);
 
 
-  template.resourceCountIs('AWS::ApiGateway::Resource', 2)
-  template.hasResourceProperties('AWS::ApiGateway::Resource', { PathPart: 'items' })
+  template.resourceCountIs('AWS::ApiGateway::Resource', 2);
+  template.hasResourceProperties('AWS::ApiGateway::Resource', { PathPart: 'items' });
   template.hasResourceProperties('AWS::ApiGateway::Method', { HttpMethod: 'POST' });
 
-  template.hasResourceProperties('AWS::ApiGateway::Resource', { PathPart: '{id}' })
+  template.hasResourceProperties('AWS::ApiGateway::Resource', { PathPart: '{id}' });
   template.hasResourceProperties('AWS::ApiGateway::Method', { HttpMethod: 'GET' });
 
   // --------------
@@ -52,7 +52,7 @@ test('ItemApi Construct Test', () => {
     KeySchema: [
       { AttributeName: 'itemId', KeyType: 'HASH' }
     ]
-  })
+  });
 
   template.hasResource('AWS::DynamoDB::Table', {
     // Deletion policy verification
@@ -69,6 +69,6 @@ test('ItemApi Construct Test', () => {
         { AttributeName: 'itemId', KeyType: 'HASH' }
       ]
     }
-  })
+  });
 
 });

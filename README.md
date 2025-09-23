@@ -59,7 +59,7 @@ In app dir, run:
 cdklocal bootstrap 
 ```
 >SIDENOTE: This command receives AWS account id and region from the parameters of `AppStack`
-This command could be done from any directory by specifying them explicitly (`cdklocal bootstrap <000000000000/eu-north-1>`)
+This command could be done from any directory by specifying them explicitly (`cdklocal bootstrap 000000000000/eu-north-1`)
 
 ### Deploy
 
@@ -161,7 +161,48 @@ laws dynamodb scan --table-name items
 npm run dynamodb-scan-items
 ```
 
-## After the exercises
+
+## EXERCISE Y: Dev and Prod Stages
+
+The [CDK Stage](https://docs.aws.amazon.com/cdk/v2/guide/stages.html) represents a group of one or more CDK stacks 
+that are configured to deploy together. Use stages to deploy the same grouping of stacks to multiple environments, 
+such as development, testing, and production.
+
+1. Create the class AppStage (that extends cdk.Stage) into a new file: `lib/stages/AppStage.ts`
+2. In the Stage constructor, create AppStack with the same logical id `AppStack`.
+3. Next let's create two stages: `Dev` and `Prod`! 
+
+Replace the contents of `bin/app.ts` with the following code:
+
+```typescript
+#!/usr/bin/env node
+import * as cdk from 'aws-cdk-lib';
+import { AppStage } from "../lib/stages/AppStage";
+
+const app = new cdk.App();
+
+new AppStage(app, 'Dev', {
+  env: {
+    account: "000000000000",
+    region: "eu-north-1" // Stockholm region
+  }
+})
+
+new AppStage(app, 'Prod', {
+  env: {
+    // Normally, prod account would be different from dev account
+    // However, localStack makes cross-account work difficult for us
+    account: "000000000000",
+    // Instead, let's change the region! À Paris, bien sûr!
+    region: "eu-west-3" // Paris region
+  }
+});
+```
+
+
+
+
+# After the exercises
 
 ### Clean up global npm installations
 

@@ -1,8 +1,8 @@
-import { Construct } from "constructs";
-import * as sqs from "aws-cdk-lib/aws-sqs";
-import { Duration } from "aws-cdk-lib";
-import * as sns from "aws-cdk-lib/aws-sns";
-import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
+import { Construct } from 'constructs';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { Duration } from 'aws-cdk-lib';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
 
 
 export class MySQS extends Construct {
@@ -15,6 +15,5 @@ export class MySQS extends Construct {
 
     const topic = new sns.Topic(this, 'AppTopic');
     topic.addSubscription(new subs.SqsSubscription(queue));
-
   }
 }

@@ -1,12 +1,12 @@
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { AttributeType, Table } from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { NodejsFunctionProps, NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { join } from 'path'
+import { join } from 'path';
 import {
   LambdaIntegration, RestApi, MockIntegration, IResource, PassthroughBehavior
-} from "aws-cdk-lib/aws-apigateway";
+} from 'aws-cdk-lib/aws-apigateway';
 
 
 /**
