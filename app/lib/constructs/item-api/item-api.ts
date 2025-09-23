@@ -32,12 +32,6 @@ export class ItemApi extends Construct {
     });
 
     const nodeJsFunctionProps: NodejsFunctionProps = {
-      bundling: {
-        externalModules: [
-          'aws-sdk', // Use the 'aws-sdk' available in the Lambda runtime
-        ],
-      },
-      depsLockFilePath: join(__dirname, 'lambda-handler', 'package-lock.json'),
       environment: {
         PRIMARY_KEY: 'itemId',
         TABLE_NAME: dynamoTable.tableName,

@@ -13,6 +13,7 @@
     "check-sns": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
     "check-lambda": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
     "check-apigw": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
+    "dynamodb-scan-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items",
     "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never"
   },
   "devDependencies": {
@@ -26,6 +27,8 @@
   },
   "dependencies": {
     "aws-cdk-lib": "2.214.0",
-    "constructs": "^10.0.0"
+    "constructs": "^10.0.0",
+    "@aws-sdk/client-dynamodb": "^3.538.0",
+    "@aws-sdk/lib-dynamodb": "^3.538.0"
   }
 }

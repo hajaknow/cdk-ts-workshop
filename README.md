@@ -140,9 +140,8 @@ It is a Construct with Rest API (API GW) -> Lambda -> DynamoDB
 
 Uncomment it in `app.ts`
 
-The lambda handler TS code has some dependencies.   
-Run `npm install` in `app/lib/constructs/item-api/lambda-handler` 
-to install them.
+Before running the test requests, find your Api Gateway id with `npm run check-apigw`
+and replace the `<ApiGWId>` in the test requests
 
 ```bash
 # Test requests:
@@ -150,14 +149,16 @@ to install them.
 # 201 
 curl -v --header "Content-Type: application/json" \
   --request POST \
-  --data '{"itemId":"helloWorld"}' [ItemsApi_URL]/items
+  --data '{"itemId":"helloWorld"}' https://<ApiGWId>.execute-api.localhost.localstack.cloud:4566/prod/items
   
 # "invalid request, you are missing the parameter body" (400)
 curl --header "Content-Type: application/json" \                                                <aws:default>
-  --request POST  https://ehe62gcivd.execute-api.localhost.localstack.cloud:4566/prod/items
+  --request POST  https://<ApiGWId>.execute-api.localhost.localstack.cloud:4566/prod/items
   
 # Test dynamoDB has items:
 laws dynamodb scan --table-name items
+# OR
+npm run dynamodb-scan-items
 ```
 
 ## After the exercises
