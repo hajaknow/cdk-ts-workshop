@@ -21,10 +21,35 @@ curl http://localhost:4566/_localstack/health
 ```bash
 # in `app` dir, run first
 npm install
+```
 
-# deploy the sample app
+## Bootstrap the CDK environment
+
+[Bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html) prepares your AWS environment by 
+provisioning specific AWS resources in your environment that are used by the AWS CDK. These resources are commonly 
+referred to as your bootstrap resources. They include the following:
+    
+- Amazon Simple Storage Service (Amazon S3) bucket – Used to store your CDK project files, such as AWS Lambda function code and assets.
+- Amazon Elastic Container Registry (Amazon ECR) repository – Used primarily to store Docker images.
+- AWS Identity and Access Management (IAM) roles – Configured to grant permissions needed by the AWS CDK to perform deployments.
+
+In app dir, run
+
+```bash
+# AWS accountId and region are prefilled from the parameters of `AppStack`
+cdklocal bootstrap 
+```
+>SIDENOTE: This command receives AWS account id and region from the parameters of `AppStack`
+This command could be done from any directory by specifying them explicitly (`cdklocal bootstrap <000000000000/eu-north-1>`)
+
+## Deploy
+
+Deploy the sample app
+
+```bash
 cdklocal deploy
 ```
+
 
 Once the deployment is done, 
 you can inspect the created resources using aws CLI.
