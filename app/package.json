@@ -11,6 +11,8 @@
     "build-test": "tsc && jest",
     "cdk": "cdk",
     "check-sns": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
+    "check-lambda": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
+    "check-apigw": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
     "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never"
   },
   "devDependencies": {

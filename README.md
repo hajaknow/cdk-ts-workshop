@@ -1,4 +1,6 @@
-# Requirements
+# CDK with Typescript
+
+## Requirements
 
 Note: You do not need to create a localstack account!
 
@@ -11,7 +13,7 @@ Note: You do not need to create a localstack account!
 4. AWS CLI
    - It is advisable to use the "default" aws cli profile, so make sure it's not connected to a real AWS account
 
-# Getting started
+## Getting started
 
 Configure a default profile for AWS CLI:
 ```
@@ -35,12 +37,13 @@ Check that it is running:
 curl http://localhost:4566/_localstack/health
 ```
 
+Navigate to `app` directory and install npm packages:
 ```bash
-# in `app` dir, run first
+cd app
 npm install
 ```
 
-## Bootstrap the CDK environment
+### Bootstrap the CDK environment
 
 [Bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html) prepares your AWS environment by 
 provisioning specific AWS resources in your environment that are used by the AWS CDK. These resources are commonly 
@@ -58,7 +61,7 @@ cdklocal bootstrap
 >SIDENOTE: This command receives AWS account id and region from the parameters of `AppStack`
 This command could be done from any directory by specifying them explicitly (`cdklocal bootstrap <000000000000/eu-north-1>`)
 
-## Deploy
+### Deploy
 
 Deploy the sample app:
 ```bash
@@ -80,7 +83,7 @@ Alternatively you can run the following npm script:
 npm run check-sns
 ```
 
-# Updates
+## Updates
 
 Localstack sucks at updating stacks.
 
@@ -98,9 +101,9 @@ npm run cdklocal-redeploy
 
 Idempotent deploys for the win, eh?
 
-# Exercises
+## Exercises
 
-## Deploy sample lambda
+### Deploy sample lambda
 
 https://docs.aws.amazon.com/lambda/latest/dg/lambda-cdk-tutorial.html
 
@@ -113,21 +116,25 @@ laws lambda list-functions
 laws apigateway get-rest-apis
 ```
 
+Alternatively run
+```bash
+npm run check-lambda
+npm run check-apigw
+```
 
-## Refactor!
+### Refactor!
 
 Place the Lambda and API GW Constructs into class HelloLambda that extends Construct,
 and place it in the following file: `lib/constructs/hello-lambda/hello-lambda.ts`
 
 Place the lambda handler code in `lib/constructs/hello-lambda/lambda-handler/index.js`
 
-## Refactor more!
+### Refactor more!
 
 Place the original SNS and Topic into class MySQS that extends Construct
-and into the file `lib/constructs/my-sqs/my-sqs.ts` 
+and into the file `lib/constructs/my-sqs/my-sqs.ts`
 
-
-## EXERCISE X: Deploy Item API
+### EXERCISE X: Deploy Item API
 
 It is a Construct with Rest API (API GW) -> Lambda -> DynamoDB
 
@@ -153,8 +160,8 @@ curl --header "Content-Type: application/json" \                                
 laws dynamodb scan --table-name items
 ```
 
-# After the exercises
+## After the exercises
 
-## Clean up global npm installations
+### Clean up global npm installations
 
 `npm uninstall -g aws-cdk-local aws-cdk`
