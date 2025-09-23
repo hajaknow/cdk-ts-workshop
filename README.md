@@ -3,24 +3,31 @@
 Note: You do not need to create a localstack account!
 
 1. Docker installation
-2. localstack CLI https://docs.localstack.cloud/aws/getting-started/installation/
-3. npm
-4. AWS CDK CLI for LocalStack https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-cdk/
-5. AWS CLI
+2. npm
+3. AWS CDK CLI for LocalStack https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-cdk/
+4. AWS CLI
    - It is advisable to use the "default" aws cli profile, so make sure it's not connected to a real AWS account
 
 # Getting started
 
-Start localStack. Check that it is running:
+Start the Localstack from the root folder in a container:
+
+```bash
+docker compose up
+```
+
+Check that it is running:
 
 ```bash
 curl http://localhost:4566/_localstack/health
 ```
 
-
 ```bash
 # in `app` dir, run first
 npm install
+
+# Bootstrap the CDK application
+cdklocal bootstrap 
 
 # deploy the sample app
 cdklocal deploy
@@ -37,6 +44,11 @@ alias laws="aws --endpoint-url=http://localhost:4566 --region=eu-north-1"
 laws sns list-topics
 ```
 
+Alternatively you can run the following npm script
+```bash
+npm run check-sns
+```
+
 # Updates
 
 Localstack sucks as updating stacks.
@@ -49,8 +61,12 @@ Here's an alias for doing just that without manual confirmations.
 alias cdklocal-redeploy="cdklocal destroy --force && cdklocal deploy --require-approval never"
 ```
 
-Idempotent deploys for the win, eh?
+Alternatively you can run the following npm script
+```bash
+npm run cdklocal-redeploy
+```
 
+Idempotent deploys for the win, eh?
 
 # Excercises
 

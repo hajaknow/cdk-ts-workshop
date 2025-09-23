@@ -10,7 +10,7 @@ export class AppStack extends Stack {
 
     new MySQS(this, 'MySQS', {})
 
-    new HelloLambda(this, 'HelloLambda', {})
+    // new HelloLambda(this, 'HelloLambda', {})
 
     new ItemApi(this, 'ItemApi', {})
 
