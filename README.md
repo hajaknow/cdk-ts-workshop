@@ -7,6 +7,7 @@ Note: You do not need to create a localstack account!
 3. AWS CDK CLI for LocalStack https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-cdk/
 4. AWS CLI
    - It is advisable to use the "default" aws cli profile, so make sure it's not connected to a real AWS account
+   - TODO: Add instructions for aws configure
 
 # Getting started
 
@@ -22,14 +23,36 @@ Check that it is running:
 curl http://localhost:4566/_localstack/health
 ```
 
+
 ```bash
 # in `app` dir, run first
 npm install
+```
 
-# Bootstrap the CDK application
+## Bootstrap the CDK environment
+
+[Bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html) prepares your AWS environment by 
+provisioning specific AWS resources in your environment that are used by the AWS CDK. These resources are commonly 
+referred to as your bootstrap resources. They include the following:
+
+- Amazon Simple Storage Service (Amazon S3) bucket – Used to store your CDK project files, such as AWS Lambda function code and assets.
+- Amazon Elastic Container Registry (Amazon ECR) repository – Used primarily to store Docker images.
+- AWS Identity and Access Management (IAM) roles – Configured to grant permissions needed by the AWS CDK to perform deployments.
+
+In app dir, run
+
+```bash
+# AWS accountId and region are prefilled from the parameters of `AppStack`
 cdklocal bootstrap 
+```
+>SIDENOTE: This command receives AWS account id and region from the parameters of `AppStack`
+This command could be done from any directory by specifying them explicitly (`cdklocal bootstrap <000000000000/eu-north-1>`)
 
-# deploy the sample app
+## Deploy
+
+Deploy the sample app
+
+```bash
 cdklocal deploy
 ```
 
@@ -51,12 +74,11 @@ npm run check-sns
 
 # Updates
 
-Localstack sucks as updating stacks.
+Localstack sucks at updating stacks.
 
 The only way is to destroy and redeploy the App. 
 
 Here's an alias for doing just that without manual confirmations.
-
 ```bash
 alias cdklocal-redeploy="cdklocal destroy --force && cdklocal deploy --require-approval never"
 ```
@@ -68,7 +90,7 @@ npm run cdklocal-redeploy
 
 Idempotent deploys for the win, eh?
 
-# Excercises
+# Exercises
 
 ## Deploy sample lambda
 
