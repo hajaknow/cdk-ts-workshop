@@ -7,22 +7,30 @@ Note: You do not need to create a localstack account!
 3. AWS CDK CLI for LocalStack https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-cdk/
 4. AWS CLI
    - It is advisable to use the "default" aws cli profile, so make sure it's not connected to a real AWS account
-   - TODO: Add instructions for aws configure
 
 # Getting started
 
-Start the Localstack from the root folder in a container:
+Configure a default profile for AWS CLI:
+```
+aws configure
+AWS Access Key ID [None]: id
+AWS Secret Access Key [None]: access-key
+Default region name [eu-north-1]:
+Default output format [json]:
+```
 
+Access Key Id and Secret Access Key do not matter when working with Localstack. The values for these can be whatever.
+You can set `eu-north-1` as the default region and choose `json` as the default output format.
+
+Start the Localstack from the root folder in a container:
 ```bash
 docker compose up
 ```
 
 Check that it is running:
-
 ```bash
 curl http://localhost:4566/_localstack/health
 ```
-
 
 ```bash
 # in `app` dir, run first
@@ -39,8 +47,7 @@ referred to as your bootstrap resources. They include the following:
 - Amazon Elastic Container Registry (Amazon ECR) repository – Used primarily to store Docker images.
 - AWS Identity and Access Management (IAM) roles – Configured to grant permissions needed by the AWS CDK to perform deployments.
 
-In app dir, run
-
+In app dir, run: 
 ```bash
 # AWS accountId and region are prefilled from the parameters of `AppStack`
 cdklocal bootstrap 
@@ -50,8 +57,7 @@ This command could be done from any directory by specifying them explicitly (`cd
 
 ## Deploy
 
-Deploy the sample app
-
+Deploy the sample app:
 ```bash
 cdklocal deploy
 ```
@@ -59,15 +65,14 @@ cdklocal deploy
 Once the deployment is done, 
 you can inspect the created resources using aws CLI.
 
-Here's an alias for accessing localstack resources with aws cli
-
+Here's an alias for accessing localstack resources with aws cli:
 ```bash
 alias laws="aws --endpoint-url=http://localhost:4566 --region=eu-north-1"
 # Test SNS Topic is created
 laws sns list-topics
 ```
 
-Alternatively you can run the following npm script
+Alternatively you can run the following npm script:
 ```bash
 npm run check-sns
 ```
@@ -78,12 +83,12 @@ Localstack sucks at updating stacks.
 
 The only way is to destroy and redeploy the App. 
 
-Here's an alias for doing just that without manual confirmations.
+Here's an alias for doing just that without manual confirmations:
 ```bash
 alias cdklocal-redeploy="cdklocal destroy --force && cdklocal deploy --require-approval never"
 ```
 
-Alternatively you can run the following npm script
+Alternatively you can run the following npm script:
 ```bash
 npm run cdklocal-redeploy
 ```
@@ -98,8 +103,7 @@ https://docs.aws.amazon.com/lambda/latest/dg/lambda-cdk-tutorial.html
 
 CDK spits out the API GW endpoint which calls the lambda function. Curl it! 
 
-You can also see that the Lambda was created
-
+You can also see that the Lambda was created:
 ```bash
 # Test lamba and api-gw are created
 laws lambda list-functions
