@@ -5,6 +5,9 @@ Note: You do not need to create a localstack account!
 1. Docker installation
 2. npm
 3. AWS CDK CLI for LocalStack https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-cdk/
+   * `npm install -g aws-cdk-local aws-cdk`
+   * `cdklocal --version`
+   * `aws --version`
 4. AWS CLI
    - It is advisable to use the "default" aws cli profile, so make sure it's not connected to a real AWS account
 
@@ -149,3 +152,9 @@ curl --header "Content-Type: application/json" \                                
 # Test dynamoDB has items:
 laws dynamodb scan --table-name items
 ```
+
+# After the exercises
+
+## Clean up global npm installations
+
+`npm uninstall -g aws-cdk-local aws-cdk`
