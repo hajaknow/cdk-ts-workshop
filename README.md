@@ -2,20 +2,21 @@
 
 ## Requirements
 
-Note: You do not need to create a localstack account!
+Note: You do not need to create any LocalStack or AWS accounts!
 
 1. Docker installation
 2. npm
 3. AWS CDK CLI for LocalStack: https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-cdk/
     * `npm install -g aws-cdk-local aws-cdk`
     * `cdklocal --version`
-4. AWS CLI
+4. AWS CLI https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
     * `aws --version`
-    * It is advisable to use the "default" AWS CLI profile, make sure it's not connected to a real AWS account!
 
 ## Getting started
 
-Configure a default profile for AWS CLI:
+It is advisable to use the "default" AWS CLI profile, make sure it's not connected to a real AWS account! 
+
+Let's configure the default profile for AWS CLI:
 
 ```bash
 aws configure
@@ -25,11 +26,11 @@ Default region name [eu-north-1]:
 Default output format [json]:
 ```
 
-Access Key Id and Secret Access Key do not matter when working with Localstack.
+Access Key Id and Secret Access Key do not matter when working with LocalStack.
 The values for these can be whatever. We can set `eu-north-1` as the default region
 and choose `json` as the default output format.
 
-Start the Localstack from the root folder in a container:
+Start the LocalStack from the root folder in a container:
 
 ```bash
 docker compose up
@@ -135,49 +136,159 @@ Now we can simply run this command to get the same result:
 npm run check-sns
 ```
 
-## Exercise N: "Update" (Not in this workshop though)
+## Exercise 3: Run tests
 
-If we now simply edited the sample AppStack and deployed again to a real AWS environment,
-everything should work fine.
+CDK init has created a sample test for us in `/tests/app.test.ts`
 
-Unfortunately for us, Localstack really sucks at updating stacks.
+The test executes our CDK code, and then synthesises a CloudFormation template (AWS-native IaC) of the Stack.
 
-The only way is to destroy and redeploy Stacks, or the entire App, as we are about to do here!
+The assertions are done against this template which actually defines what resources deployed to AWS.
+
+The sample test checks that there is a `AWS::SQS::Queue` resource with a `VisibilityTimeout: 300` property.
+
+It also checks that exactly one `AWS::SNS::Topic` resource has been made.
+
+Run tests with
+```bash
+npm run test
+```
+
+## Exercise 4: Modify AppStack
+
+Let's modify the resources of `lib/app-stack.ts` a bit. 
+
+Create a second Topic with id = `AppTopic2`, which also subscribes to `AppQueue`.
+
+Run tests, see that it fails, then fix the tests!
+
+## Exercise 5: "Update" AppStack (Not in this workshop though)
+
+If we would be working against a real AWS environment the sample AppStack could simply be deployed again,
+and everything should work fine.
+
+Unfortunately for us, LocalStack really sucks at updating stacks.
+
+With LocalStack, the only way is to destroy and redeploy our Stack, or the entire App, as we are about to do here!
 
 Idempotent deploys for the win, eh?
 
-Here's an alias for doing just that without manual confirmations:
-
+For this we have the npm script `cdklocal-redeploy`, 
+which executes the following two commands:
 ```bash
-alias cdklocal-redeploy="cdklocal destroy --force && cdklocal deploy --require-approval never"
+# Use `npm run cdklocal-redeploy` instead of
+cdklocal destroy --force && cdklocal deploy --require-approval never
 ```
 
-Alternatively we can run the following npm script:
+The `--force` and `--require-approval never` liberate use from the arduous task of manual confirmation.
+
+We can now run the script: 
 
 ```bash
 npm run cdklocal-redeploy
 ```
 
-### Deploy sample lambda
-
-https://docs.aws.amazon.com/lambda/latest/dg/lambda-cdk-tutorial.html
-
-CDK spits out the API GW endpoint which calls the lambda function. Curl it!
-
-We can also see that the Lambda was created:
+Check that now we have two SNS topics
 
 ```bash
-# Test lamba and api-gw are created
-laws lambda list-functions
-laws apigateway get-rest-apis
+npm run check-sns
 ```
 
-Alternatively run
+### Excercise 6: Deploy a HelloLambda function
+
+[AWS Lambda functions](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html) are great, let's deploy one!
+
+Add the following lines of code inside the AppStack constructor `lib/app-stack.ts`. 
+
+It can be, for example underneath the existing SNS resource code.
+
+```typescript
+// previous imports ...
+
+// add these imports!
+import * as apigw from "aws-cdk-lib/aws-apigateway";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as path from 'node:path';
+
+
+export class AppStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
+    super(scope, id, props);
+
+    // ... AppQueue and AppTopic resources ...
+    
+    const fn = new lambda.Function(this, 'MyFunction', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-handler')),
+    });
+    
+    const endpoint = new apigw.LambdaRestApi(this, `ApiGwEndpoint`, {
+      handler: fn,
+      restApiName: `HelloApi`,
+    });
+  }
+}
+```
+
+Lambda functions support TypeScript, but in this example we will use JavaScript.
+
+Create a new folder `/lib/lambda-handler` and create a new file named `index.js` there with the following content:
+
+```javascript
+exports.handler = async (event) => {
+  // Extract specific properties from the event object
+  const { resource, path, httpMethod, headers, queryStringParameters, body } = event;
+  const response = {
+    resource,
+    path,
+    httpMethod,
+    headers,
+    queryStringParameters,
+    body: body || 'Hello world!!!',
+  };
+  return {
+    body: JSON.stringify(response, null, 2),
+    statusCode: 200,
+  };
+};
+
+```
+
+Time to redeploy!
+
+```bash
+npm run cdklocal-redeploy
+```
+
+
+CDK spits out the API GW endpoint which calls the lambda function. For example: 
+
+```bash
+Outputs:
+AppStack.ApiGwEndpoint77F417B1 = https://r72pyu2yff.execute-api.localhost.localstack.cloud:4566/prod/
+```
+
+Curl it!
+
+```bash
+curl https://r72pyu2yff.execute-api.localhost.localstack.cloud:4566/prod/
+{
+  "resource": "/",
+  "path": "/",
+  "httpMethod": "GET",
+  ...
+  "body": "Hello world!!!"
+}
+```
+
+Check that the Lambda was created.
 
 ```bash
 npm run check-lambda
-npm run check-apigw
+npm run check-apigw 
 ```
+
+If you're interested, go check out what AWS CLI commands these npm scripts send! 
 
 ### Refactor!
 
