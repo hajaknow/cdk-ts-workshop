@@ -1,4 +1,4 @@
-# CDK with Typescript
+# CDK workshop with Typescript (against LocalStack)
 
 ## Requirements
 
@@ -7,21 +7,17 @@ Note: You do not need to create a localstack account!
 1. Docker installation
 2. npm
 3. AWS CDK CLI for LocalStack: https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-cdk/
-
-* `npm install -g aws-cdk-local aws-cdk`
-* `cdklocal --version`
-
-
+    * `npm install -g aws-cdk-local aws-cdk`
+    * `cdklocal --version`
 4. AWS CLI
-
-* `aws --version`
-* It is advisable to use the "default" aws cli profile, make sure it's not connected to a real AWS account!
+    * `aws --version`
+    * It is advisable to use the "default" AWS CLI profile, make sure it's not connected to a real AWS account!
 
 ## Getting started
 
 Configure a default profile for AWS CLI:
 
-```
+```bash
 aws configure
 AWS Access Key ID [None]: id
 AWS Secret Access Key [None]: access-key
@@ -30,7 +26,7 @@ Default output format [json]:
 ```
 
 Access Key Id and Secret Access Key do not matter when working with Localstack.
-The values for these can be whatever. You can set `eu-north-1` as the default region
+The values for these can be whatever. We can set `eu-north-1` as the default region
 and choose `json` as the default output format.
 
 Start the Localstack from the root folder in a container:
@@ -45,7 +41,7 @@ Check that it is running:
 curl http://localhost:4566/_localstack/health
 ```
 
-### Exercise 0: Create the initial CDK app
+## Exercise 0: Create the initial CDK app
 
 Create an empty `app` directory, navigate to it, and run the following command
 
@@ -53,23 +49,37 @@ Create an empty `app` directory, navigate to it, and run the following command
 cdklocal init sample-app --language=typescript
 ```
 
-Then install npm packages:
+## Exercise 1: Bootstrap the CDK environment
 
-```bash
-npm install
+Quoting AWS:
+
+> [Bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html) prepares your AWS environment by
+> provisioning specific AWS resources in your environment that are used by the AWS CDK.  
+> These resources are commonly referred to as your bootstrap resources. They include the following:
+>
+> - Amazon Simple Storage Service (Amazon S3) bucket – Used to store your CDK project files, such as AWS Lambda function
+    code and assets.
+> - Amazon Elastic Container Registry (Amazon ECR) repository – Used primarily to store Docker images.
+> - AWS Identity and Access Management (IAM) roles – Configured to grant permissions needed by the AWS CDK to perform
+    deployments.
+
+Before bootstrapping, we should define our accountId and region for the stack in our sample app.
+
+Replace the contents of `bin/app.ts` with the following:
+
+```typescript
+#!/usr/bin/env node
+import * as cdk from 'aws-cdk-lib';
+import { AppStack } from '../lib/app-stack';
+
+const app = new cdk.App();
+new AppStack(app, 'AppStack', {
+  env: {
+    account: '000000000000', // Default LocalStack accountId
+    region: 'eu-north-1',    // Stockholm rules !!
+  }
+});
 ```
-
-### Exercise N: Bootstrap the CDK environment
-
-[Bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html) prepares your AWS environment by
-provisioning specific AWS resources in your environment that are used by the AWS CDK.  
-These resources are commonly referred to as your bootstrap resources. They include the following:
-
-- Amazon Simple Storage Service (Amazon S3) bucket – Used to store your CDK project files, such as AWS Lambda function
-  code and assets.
-- Amazon Elastic Container Registry (Amazon ECR) repository – Used primarily to store Docker images.
-- AWS Identity and Access Management (IAM) roles – Configured to grant permissions needed by the AWS CDK to perform
-  deployments.
 
 In app dir, run:
 
@@ -78,12 +88,13 @@ In app dir, run:
 cdklocal bootstrap 
 ```
 
-> SIDENOTE:  
+> **SIDENOTE**
+>   
 > This command receives AWS account id and region from the parameters of `AppStack`  
 > The command could be done from any directory by specifying the parameters explicitly:  
 > `cdklocal bootstrap 000000000000/eu-north-1`
 
-### Exercise N: Deploy
+## Exercise 2: First Deploy
 
 Deploy the sample app:
 
@@ -92,17 +103,33 @@ cdklocal deploy
 ```
 
 Once the deployment is done,
-you can inspect the created resources using aws CLI.
+we can inspect the created resources using AWS CLI.
 
-Here's an alias for accessing localstack resources with aws cli:
+Because of LocalStack, we have to append a lengthy `--endpoint-url` flag to our command
 
 ```bash
-alias laws="aws --endpoint-url=http://localhost:4566 --region=eu-north-1"
-# Test SNS Topic is created
-laws sns list-topics
+# Check that an SNS Topic was created
+aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics
 ```
 
-Alternatively you can run the following npm script:
+Because this is annoying, let's create a some npm scripts to help us. Replace the "scripts" section in `package.json` with these:
+
+```
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "build-test": "tsc && jest",
+    "cdk": "cdk",
+    "check-sns": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
+    "check-lambda": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
+    "check-apigw": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
+    "dynamodb-scan-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items",
+    "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never"
+  }
+```
+
+Now we can simply run this command to get the same result:
 
 ```bash
 npm run check-sns
@@ -110,7 +137,7 @@ npm run check-sns
 
 ## Exercise N: "Update" (Not in this workshop though)
 
-If you now simply edited the sample AppStack and deployed again to a real AWS environment,
+If we now simply edited the sample AppStack and deployed again to a real AWS environment,
 everything should work fine.
 
 Unfortunately for us, Localstack really sucks at updating stacks.
@@ -125,13 +152,11 @@ Here's an alias for doing just that without manual confirmations:
 alias cdklocal-redeploy="cdklocal destroy --force && cdklocal deploy --require-approval never"
 ```
 
-Alternatively you can run the following npm script:
+Alternatively we can run the following npm script:
 
 ```bash
 npm run cdklocal-redeploy
 ```
-
-## Exercises
 
 ### Deploy sample lambda
 
@@ -139,7 +164,7 @@ https://docs.aws.amazon.com/lambda/latest/dg/lambda-cdk-tutorial.html
 
 CDK spits out the API GW endpoint which calls the lambda function. Curl it!
 
-You can also see that the Lambda was created:
+We can also see that the Lambda was created:
 
 ```bash
 # Test lamba and api-gw are created
@@ -176,7 +201,7 @@ It is a Construct with Rest API (API GW) -> Lambda -> DynamoDB
 
 Uncomment it in `app.ts`
 
-Before running the test requests, find your Api Gateway id with `npm run check-apigw`
+Before running the test requests, find our Api Gateway id with `npm run check-apigw`
 and replace the `<ApiGWId>` in the test requests
 
 ```bash
@@ -209,7 +234,7 @@ The [CDK Stage](https://docs.aws.amazon.com/cdk/v2/guide/stages.html) represents
 that are configured to deploy together. Use stages to deploy the same grouping of stacks to multiple environments,
 such as development, testing, and production.
 
-0. Destroy your current stack `cdklocal destroy --force`
+0. Destroy the currently deployed stack with `cdklocal destroy --force`
 1. Create the class AppStage (that extends cdk.Stage) into a new file: `lib/stages/AppStage.ts`
 2. In the Stage constructor, create AppStack with the same logical id `AppStack`.
 3. Next let's create two stages: `Dev` and `Prod`!
@@ -241,7 +266,7 @@ new AppStage(app, 'Prod', {
 });
 ```
 
-Bootstrap your account again:
+Bootstrap the account again. Both regions will be bootstrapped separately!
 
 ```bash
 cdk bootstrap
