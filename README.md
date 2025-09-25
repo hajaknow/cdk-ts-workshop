@@ -2,7 +2,8 @@
 
 ## Requirements
 
-Note: You do not need to create any LocalStack or AWS accounts!
+> NOTE: You do not need to create any accounts for LocalStack or AWS 
+> no matter what they say on the website!
 
 1. Docker installation
 2. npm
@@ -42,13 +43,57 @@ Check that it is running:
 curl http://localhost:4566/_localstack/health
 ```
 
-## Exercise 0: Create the initial CDK app
+## Exercise 0: Create the initial CDK Sample App
 
 Create an empty `app` directory, navigate to it, and run the following command
 
 ```bash
 cdklocal init sample-app --language=typescript
 ```
+
+## Excercise 0.5: Exploring the Sample App
+
+Looking at the code in `lib/app-stack.ts`, the sample app seems to only create three AWS resources:
+
+1. An SQS Queue (SQS = Simple Queue Service)
+2. An SNS Topic (SNS = Simple Notification Service) 
+3. The SQS Queue then becomes a Subscriber to the Topic
+
+So that's Queue + Topic + Subscription = 3 resources, right? 
+   
+Almost! Additionally the Topic gets the necessary write access to the Queue. 
+We don't see it here, because necessary resources are created for us behind the scenes!
+
+Let's see what the actual CloudFormation template looks like to see everything that
+CDK has created for us.
+
+```bash
+cdklocal synth
+```
+
+This will output a lovely CloudFormation YAML to your tiny terminal.
+
+> NOTE:   
+> If you hate YAML and love JSON, you can use the `--json` flag. 
+
+After you've synthesized the template, 
+you can always find the JSON version of it in `/cdk.out/AppStack.template.json`.
+
+Let's look at the `Resources` section in the CDK Template, focusing on the `Type` of each resource.
+
+We can identify four resources in total:
+
+1. `AWS::SQS::Queue`
+2. `AWS::SQS::QueuePolicy` (Adds permissions for the Topic to write to the SQS Queue)
+3. `AWS::SNS::Subscription`
+4. `AWS::SNS::Topic`
+
+We don't need to bother ourselves with the `CDKMetadata` and `Parameters` sections of the template right now, 
+and we don't yet have anything in the `Outputs` section, but it's good to be aware that they also exist in 
+the CloudFormation template.
+
+Ultimately, this template is the recipe that we hand off to AWS so it knows which resources it needs to create.  
+
 
 ## Exercise 1: Bootstrap the CDK environment
 
@@ -113,7 +158,10 @@ Because of LocalStack, we have to append a lengthy `--endpoint-url` flag to our 
 aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics
 ```
 
-Because this is annoying, let's create a some npm scripts to help us. Replace the "scripts" section in `package.json` with these:
+Because this is long and annoying, let's create a some npm scripts to help us with the AWS CLI commands. 
+(Plus a few extras that we will need later!)
+
+Replace the "scripts" section in `package.json` with these:
 
 ```
   "scripts": {
@@ -122,18 +170,18 @@ Because this is annoying, let's create a some npm scripts to help us. Replace th
     "test": "jest",
     "build-test": "tsc && jest",
     "cdk": "cdk",
-    "check-sns": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
-    "check-lambda": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
-    "check-apigw": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
-    "dynamodb-scan-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items",
-    "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never"
+    "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never",
+    "aws-sns-list-topics": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
+    "aws-lambda-list-functions": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
+    "aws-apigateway-get-rest-apis": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
+    "aws-dynamodb-scan-table-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items"
   }
 ```
 
 Now we can simply run this command to get the same result:
 
 ```bash
-npm run check-sns
+npm run aws-sns-list-topics
 ```
 
 ## Exercise 3: Run tests
@@ -157,7 +205,7 @@ npm run test
 
 Let's modify the resources of `lib/app-stack.ts` a bit. 
 
-Create a second Topic with id = `AppTopic2`, which also subscribes to `AppQueue`.
+Create a second Topic with id = `AppTopic2`, and add `AppQueue` as its only Subscriber.
 
 Run tests, see that it fails, then fix the tests!
 
@@ -190,7 +238,7 @@ npm run cdklocal-redeploy
 Check that now we have two SNS topics
 
 ```bash
-npm run check-sns
+npm run aws-sns-list-topics
 ```
 
 ### Excercise 6: Deploy a HelloLambda function
@@ -260,15 +308,16 @@ Time to redeploy!
 npm run cdklocal-redeploy
 ```
 
-
-CDK spits out the API GW endpoint which calls the lambda function. For example: 
+CDK gives an API GW endpoint URL as an Output. 
+This endpoint calls the lambda function and returns its result. 
 
 ```bash
+# Example output
 Outputs:
 AppStack.ApiGwEndpoint77F417B1 = https://r72pyu2yff.execute-api.localhost.localstack.cloud:4566/prod/
 ```
 
-Curl it!
+Curl the endpoint URL!
 
 ```bash
 curl https://r72pyu2yff.execute-api.localhost.localstack.cloud:4566/prod/
@@ -284,8 +333,8 @@ curl https://r72pyu2yff.execute-api.localhost.localstack.cloud:4566/prod/
 Check that the Lambda was created.
 
 ```bash
-npm run check-lambda
-npm run check-apigw 
+npm run aws-lambda-list-functions
+npm run aws-apigateway-get-rest-apis 
 ```
 
 If you're interested, go check out what AWS CLI commands these npm scripts send! 
@@ -312,7 +361,7 @@ It is a Construct with Rest API (API GW) -> Lambda -> DynamoDB
 
 Uncomment it in `app.ts`
 
-Before running the test requests, find our Api Gateway id with `npm run check-apigw`
+Before running the test requests, find our Api Gateway id with `npm run aws-apigateway-get-rest-apis`
 and replace the `<ApiGWId>` in the test requests
 
 ```bash
@@ -336,7 +385,7 @@ curl --header "Content-Type: application/json" \
 # Test dynamoDB has items:
 laws dynamodb scan --table-name items
 # OR
-npm run dynamodb-scan-items
+npm run aws-dynamodb-scan-table-items
 ```
 
 ## EXERCISE Y: Dev and Prod Stages

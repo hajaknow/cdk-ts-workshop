@@ -10,11 +10,11 @@
     "test": "jest",
     "build-test": "tsc && jest",
     "cdk": "cdk",
-    "check-sns": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
-    "check-lambda": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
-    "check-apigw": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
-    "dynamodb-scan-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items",
-    "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never"
+    "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never",
+    "aws-sns-list-topics": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
+    "aws-lambda-list-functions": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
+    "aws-apigateway-get-rest-apis": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
+    "aws-dynamodb-scan-table-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
