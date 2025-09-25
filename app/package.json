@@ -12,6 +12,7 @@
     "cdk": "cdk",
     "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never",
     "aws-sns-list-topics": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
+    "aws-sqs-list-queues": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sqs list-queues",
     "aws-lambda-list-functions": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
     "aws-apigateway-get-rest-apis": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
     "aws-dynamodb-scan-table-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items"

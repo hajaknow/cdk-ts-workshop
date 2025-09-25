@@ -60,9 +60,9 @@ Looking at the code in `lib/app-stack.ts`, the sample app seems to only create t
 3. The SQS Queue then becomes a Subscriber to the Topic
 
 So that's Queue + Topic + Subscription = 3 resources, right? 
-   
-Almost! Additionally the Topic gets the necessary write access to the Queue. 
-We don't see it here, because necessary resources are created for us behind the scenes!
+
+Almost! Additionally the Topic gets the necessary write access to the Queue. We don't see it here, 
+because CDK creates the necessary resources for us behind the scenes!
 
 Let's see what the actual CloudFormation template looks like to see everything that
 CDK has created for us.
@@ -73,8 +73,7 @@ cdklocal synth
 
 This will output a lovely CloudFormation YAML to your tiny terminal.
 
-> NOTE:   
-> If you hate YAML and love JSON, you can use the `--json` flag. 
+> **NOTE:** If you hate YAML and love JSON, you can use the `--json` flag. 
 
 After you've synthesized the template, 
 you can always find the JSON version of it in `/cdk.out/AppStack.template.json`.
@@ -172,6 +171,7 @@ Replace the "scripts" section in `package.json` with these:
     "cdk": "cdk",
     "cdklocal-redeploy": "cdklocal destroy --force && cdklocal deploy --require-approval never",
     "aws-sns-list-topics": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sns list-topics",
+    "aws-sqs-list-queues": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 sqs list-queues",
     "aws-lambda-list-functions": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 lambda list-functions",
     "aws-apigateway-get-rest-apis": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 apigateway get-rest-apis",
     "aws-dynamodb-scan-table-items": "aws --endpoint-url=http://localhost:4566 --region=eu-north-1 dynamodb scan --table-name items"
@@ -184,6 +184,64 @@ Now we can simply run this command to get the same result:
 npm run aws-sns-list-topics
 ```
 
+## Wait, what just happened?
+
+This is all great, but what exactly did we actually create?
+
+### SNS Topic
+
+> **Amazon SNS** (Simple Notification Service) allows applications to send time-critical messages to 
+> multiple subscribers through a “push” mechanism, 
+> eliminating the need to periodically check or “poll” for updates.
+
+SNS is used for Publisher-Subscriber patterns.
+
+We can yell messages to this SNS Topic, and all services (SQS, Lambda functions, etc.) which subscribe to that Topic will be "pushed" whatever we yell.
+
+### SQS Queue
+
+> **Amazon SQS** (Simple Queue Service) is a message queue service used by distributed applications to 
+> exchange messages through a polling model, and can be used to decouple sending and receiving 
+> components—without requiring each component to be concurrently available.
+
+So it's just a message queue with some fancy features. Services can poll messages from it. 
+Our Topic receives messages and pushes them to all it's subscribers, including our SQS Queue, from which preserves 
+the message for us until we read it (asynchronous processing). More info about this [here](https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html).
+
+Right, now let's get on with it!
+
+## Exercise 2.6: 
+
+First, Get and Copy the Topic ARN: 
+```bash
+npm run aws-sns-list-topics
+```
+
+Then Send a message to the topic:
+```bash
+# Execute as a single command
+aws --endpoint-url=http://localhost:4566 --region=eu-north-1 \
+    sns publish --topic-arn='TOPIC_ARN' --message 'HELLO WORLD'
+```
+
+Next, list your sqs queues, Copy the QueueUrl:
+
+```bash
+npm run aws-sqs-list-queues
+```
+
+Then read the message from the Queue.
+
+```bash
+# Execute as a single command
+aws --endpoint-url=http://localhost:4566 --region=eu-north-1 \
+    sqs receive-message --queue-url='QUEUE_URL'
+```
+
+You should see a json formatted message. Somewhere in the body you can read `Message: "HELLO WORLD"`.
+
+Well done!
+
 ## Exercise 3: Run tests
 
 CDK init has created a sample test for us in `/tests/app.test.ts`
@@ -192,7 +250,9 @@ The test executes our CDK code, and then synthesises a CloudFormation template (
 
 The assertions are done against this template which actually defines what resources deployed to AWS.
 
-The sample test checks that there is a `AWS::SQS::Queue` resource with a `VisibilityTimeout: 300` property.
+The sample test checks that there is a `AWS::SQS::Queue` resource with a 
+[VisibilityTimeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html) 
+property set to `300` seconds.
 
 It also checks that exactly one `AWS::SNS::Topic` resource has been made.
 
@@ -205,25 +265,40 @@ npm run test
 
 Let's modify the resources of `lib/app-stack.ts` a bit. 
 
-Create a second Topic with id = `AppTopic2`, and add `AppQueue` as its only Subscriber.
+1. Change the `visibilityTimeout` of `AppQueue` parameter to `100` seconds
+2. Create a second SQS Queue 
+    - Set id = `AppQueue2`
+      - Note that CDK wants a unique id for each resource.
+    - Set the `visibilityTimeout` parameter to `30` seconds
+3. Add `AppQueue2` as the second subscriber to `AppTopic`
+4. Run the tests and confirm that they fail. 
+5. Fix the tests.
+    - Check that there are two `AWS::SQS::Queue` resources
+        - Check that there is at least Queue with property `VisibilityTimeout: 100`
+        - Check that there is at least Queue with property `VisibilityTimeout: 30`
+6. Add a new check that there are 2 resources of type `AWS::SNS::Subscription`
+7. Run the tests and confirm that they pass
 
-Run tests, see that it fails, then fix the tests!
+Well done!
 
-## Exercise 5: "Update" AppStack (Not in this workshop though)
+## Exercise 5: Update AppStack
 
-If we would be working against a real AWS environment the sample AppStack could simply be deployed again,
+Well, we cannot really "update" AppStack...
+
+If we would be working against a real AWS environment, we could simple deploy the sample AppStack again,
 and everything should work fine.
 
-Unfortunately for us, LocalStack really sucks at updating stacks.
+Unfortunately for us, LocalStack really sucks at updating existing stacks.
 
-With LocalStack, the only way is to destroy and redeploy our Stack, or the entire App, as we are about to do here!
+With LocalStack, the only way forward is to destroy and redeploy our Stack, or the entire App, as we are about to do here!
 
 Idempotent deploys for the win, eh?
 
 For this we have the npm script `cdklocal-redeploy`, 
 which executes the following two commands:
+
 ```bash
-# Use `npm run cdklocal-redeploy` instead of
+# `npm run cdklocal-redeploy` excutes these:
 cdklocal destroy --force && cdklocal deploy --require-approval never
 ```
 
@@ -235,26 +310,28 @@ We can now run the script:
 npm run cdklocal-redeploy
 ```
 
-Check that now we have two SNS topics
+Check that now we have two SQS queues
 
 ```bash
-npm run aws-sns-list-topics
+npm run aws-sqs-list-queues
 ```
 
-### Excercise 6: Deploy a HelloLambda function
+Well done!
+
+## Excercise 6: Deploy a Hello World service with Lambda function and Api Gateway
 
 [AWS Lambda functions](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html) are great, let's deploy one!
 
-Add the following lines of code inside the AppStack constructor `lib/app-stack.ts`. 
+Add the following lines of code inside the AppStack constructor in `lib/app-stack.ts`. 
 
-It can be, for example underneath the existing SNS resource code.
+It can be, for example underneath the existing Topic and Queue resource code.
 
 ```typescript
 // previous imports ...
 
 // add these imports!
-import * as apigw from "aws-cdk-lib/aws-apigateway";
-import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as apigw from 'aws-cdk-lib/aws-apigateway';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'node:path';
 
 
@@ -262,14 +339,14 @@ export class AppStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // ... AppQueue and AppTopic resources ...
-    
-    const fn = new lambda.Function(this, 'MyFunction', {
+    // ... AppQueues and AppTopic resources ...
+
+    const fn = new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-handler')),
     });
-    
+
     const endpoint = new apigw.LambdaRestApi(this, `ApiGwEndpoint`, {
       handler: fn,
       restApiName: `HelloApi`,
@@ -302,10 +379,17 @@ exports.handler = async (event) => {
 
 ```
 
-Time to redeploy!
+Let's Redeploy 
 
 ```bash
 npm run cdklocal-redeploy
+```
+
+Check that the Lambda was created.
+
+```bash
+npm run aws-lambda-list-functions
+npm run aws-apigateway-get-rest-apis 
 ```
 
 CDK gives an API GW endpoint URL as an Output. 
@@ -330,28 +414,164 @@ curl https://r72pyu2yff.execute-api.localhost.localstack.cloud:4566/prod/
 }
 ```
 
-Check that the Lambda was created.
+Well done!
+
+We will write some tests for HelloLambda soon, but first, it's time to refactor our code a bit.
+
+## How do we organize a CDK app?
+
+AWS best practise guidance for organisation is that
+
+- `/bin` holds CDK App (in this case app.ts), the entrypoint for everything
+    - The purpose of the **App** is to compose Stacks (or Stages)
+- `/lib` holds everything else
+    - **Stacks**: The smallest deployable unit, represents a CloudFormation template.
+    - **Constructs**: Can be a single Resource or a bundle of many Resources 
+    - **Stages**: Composes Stacks. Their purpose is to separate different deployment environments (Dev, Test, Prod, etc.)
+        - However, we've noticed that in the industry people don't use Stages, 
+          but instead rely on flags and configuration files to create differences between Dev, Test, Prod etc.
+
+Beyond this, it's anybody's game. AWS has some 
+[instructions for large-scale projects](https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-cdk-typescript-iac/organizing-code-best-practices.html), 
+but that's really not helpful here.
+
+Our advise is to organise it in the way that makes most sense to you and your team.
+
+For the purposes of this demo workshop, though, let's organise our code around the core concepts of CDK.
+
+**Create the following directories:**
 
 ```bash
-npm run aws-lambda-list-functions
-npm run aws-apigateway-get-rest-apis 
+mkdir lib/constructs ;
+mkdir lib/stacks ;
+mkdir lib/stages ;
 ```
 
-If you're interested, go check out what AWS CLI commands these npm scripts send! 
+Now onwards!
 
-### Refactor!
+## Model with Constructs, deploy with Stacks
 
-Place the Lambda and API GW Constructs into class HelloLambda that extends Construct,
-and place it in the following file: `lib/constructs/hello-lambda/hello-lambda.ts`
+We will teach you the AWS best practices, because they seem reasonable:
 
-Place the lambda handler code in `lib/constructs/hello-lambda/lambda-handler/index.js`
+> #### Model with constructs, deploy with stacks
+> For example, if one of your logical units is a website, the constructs that make it up (such as an Amazon S3 bucket, 
+> API Gateway, Lambda functions, or Amazon RDS tables) should be composed into a single high-level Construct. 
+> Then that Construct should be instantiated in one or more Stacks for deployment.
 
-### Refactor more!
+But be warned! In the wild, it is more common that the example scenario would have an S3BucketStack, APIGWStack, 
+LambdaStack(s) and RDSTableStacks. We've even seen Stacks for individual read-write permissions. This is not wrong, 
+there are good reasons for doing this, however, it is not considered best practise.
 
-Place the original SNS and Topic into class MySQS that extends Construct
-and into the file `lib/constructs/my-sqs/my-sqs.ts`
+Don't worry about "high-level" or "low-level" or "L1/L2/L3" Constructs for now. Our Construct can be an entire 
+application or a single Resource.
 
-### Write tests
+## Exercise 6.5: Destroy the current deployment
+
+The following refactorings change the Logical IDs of our deployed resources. If we change them, we cannot use CDK to 
+destroy them.
+
+So it is wise to destroy our resources now, before touching the code.
+
+```bash
+cdklocal destroy --force
+```
+
+BTW, changes in Logical IDs are precisely the kind of thing why you would want to always make a git commit after a 
+successful deployment! Cloud people call it `git-ops`, we developers just call it `git`. 
+
+For this workshop, let's not stress it too much.
+
+> **NOTE:**  
+> If your infrastructure gets too stuck and you can't destroy it with CDK,  
+> simply terminate LocalStack with `CTRL+C` or run `docker-compose down` in the root of the repo.
+
+## Exercise 7: Refactor the Hello Lambda into a Construct!
+
+Let's move the Lambda and ApiGateway code into a HelloService Construct.
+
+Create the file (and required directories) `lib/constructs/hello-service/hello-service.ts` with the following contents:
+
+```typescript
+import { Construct } from 'constructs';
+
+export class HelloService extends Construct {
+  constructor(scope: Construct, id: string, props: any) {
+    super(scope, id);
+    // Define your resources here!
+    
+  }
+}
+```
+
+Move the code that defines the HelloService and API Gateway Constructs into the constructor.
+
+Move the lambda handler code into `lib/constructs/hello-service/lambda-handler/index.js`
+
+Instantiate `HelloService` in `AppStack` with the Logical ID `HelloService`. 
+
+`AppStack` should now look like this:
+
+```typescript
+// ... previous imports
+import { Construct } from 'constructs';
+import { HelloService } from './constructs/hello-service/hello-service';
+
+export class AppStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
+    super(scope, id, props);
+
+    // ... SQS Queue and SNS Topic code is still here ...
+
+    new HelloService(this, 'HelloService', {});
+  }
+}
+
+```
+
+Redeploy and make sure that the Lambda still answers your curl with a perky "Hello world".
+
+Well done!
+
+## Exercise 8: Refactor more!
+
+Let's do the same thing for our Queues and Topic. We'll build the QueueService Construct.
+
+Once again, we are touching the Logical IDs, so let's destroy our resources before touching the code.
+
+```bash
+cdklocal destroy --force
+```
+
+We'll repeat what we learned in the previous exercise.
+
+Create the Construct `QueueService` into the file `lib/constructs/queue-service.ts` and move the Queues and the Topic 
+from AppStack into the constructor of QueueService.
+
+Instantiate `QueueService` in `AppStack` with the Logical ID `QueueService`. 
+
+`AppStack` should now look nice and neat:
+
+```typescript
+import { Stack, StackProps } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import { HelloService } from './constructs/hello-service/hello-service';
+import { QueueService } from './constructs/queue-service';
+
+export class AppStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
+    super(scope, id, props);
+    new QueueService(this, 'QueueService', {});
+    new HelloService(this, 'HelloService', {});
+  }
+}
+```
+
+### Write tests for HelloService
+
+Run `cdklocal synth` or open `/cdk.out/AppStack.template.json` and see what kinds of new Resources were created.
+
+Create the following test file: `/test/hello-service.test.ts`
+
 
 ### EXERCISE X: Deploy Item API
 
