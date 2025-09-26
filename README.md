@@ -276,7 +276,7 @@ Let's modify the resources of `lib/app-stack.ts` a bit.
     - Check that there are two `AWS::SQS::Queue` resources
         - Check that there is at least Queue with property `VisibilityTimeout: 100`
         - Check that there is at least Queue with property `VisibilityTimeout: 30`
-6. Add a new check that there are 2 resources of type `AWS::SNS::Subscription`
+6. Add a new check that there are `2` resources of type `AWS::SNS::Subscription`
 7. Run the tests and confirm that they pass
 
 Well done!
@@ -414,9 +414,25 @@ curl https://r72pyu2yff.execute-api.localhost.localstack.cloud:4566/prod/
 }
 ```
 
+Api Gateway doesn't mind it if you use POST requests instead of GETs:
+
+```bash
+curl --header "Content-Type: application/json" --request POST \
+--data '{"foo":"bar"}' https://4t2rxyr1jo.execute-api.localhost.localstack.cloud:4566/prod/
+{
+  "resource": "/",
+  "path": "/",
+  "httpMethod": "POST",
+  ...
+  "body": "{\"foo\":\"bar\"}"
+} 
+```
+
+The original JSON body is returned instead of Hello world.
+
 Well done!
 
-We will write some tests for HelloLambda soon, but first, it's time to refactor our code a bit.
+We will write some tests for this Lambda soon, but first, it's time to refactor our code a bit.
 
 ## How do we organize a CDK app?
 
@@ -467,23 +483,25 @@ application or a single Resource.
 
 ## Exercise 6.5: Destroy the current deployment
 
-The following refactorings change the Logical IDs of our deployed resources. If we change them, we cannot use CDK to 
-destroy them.
+We are about to start nesting Constructs and moving Constructs from one Stack to another. 
+These refactorings will modify the Logical IDs  of our deployed resources. After changing them we cannot use CDK 
+to destroy them anymore.
 
-So it is wise to destroy our resources now, before touching the code.
+So it is always wise to destroy our resources now, before doing something that affects the Logical IDs.
 
 ```bash
 cdklocal destroy --force
 ```
 
-BTW, changes in Logical IDs are precisely the kind of thing why you would want to always make a git commit after a 
+BTW, changes in Logical IDs are precisely the kind of thing why you would want to always make a `git commit` after a 
 successful deployment! Cloud people call it `git-ops`, we developers just call it `git`. 
 
-For this workshop, let's not stress it too much.
+For this workshop, though, let's not worry about it.
 
 > **NOTE:**  
-> If your infrastructure gets too stuck and you can't destroy it with CDK,  
-> simply terminate LocalStack with `CTRL+C` or run `docker-compose down` in the root of the repo.
+> If your infrastructure gets too stuck and you can't destroy it with CDK anymore, simply terminate LocalStack  
+> by pressing `CTRL+C` in the LocalStack terminal or run `docker-compose down` in the root of the repo.  
+> Then you can start LocalStack from fresh, run `cdklocal bootstrap` and finally `cdklocal deploy --require-approval never`.
 
 ## Exercise 7: Refactor the Hello Lambda into a Construct!
 
@@ -534,13 +552,13 @@ Well done!
 
 ## Exercise 8: Refactor more!
 
-Let's do the same thing for our Queues and Topic. We'll build the QueueService Construct.
-
-Once again, we are touching the Logical IDs, so let's destroy our resources before touching the code.
+Once again, we will be touching the Logical IDs, so let's destroy all resources before touching any code.
 
 ```bash
 cdklocal destroy --force
 ```
+
+Let's do the same thing for our Queues and Topic. We'll build the QueueService Construct.
 
 We'll repeat what we learned in the previous exercise.
 
@@ -566,12 +584,59 @@ export class AppStack extends Stack {
 }
 ```
 
-### Write tests for HelloService
+### Exercise 9: Write tests for HelloService
 
 Run `cdklocal synth` or open `/cdk.out/AppStack.template.json` and see what kinds of new Resources were created.
 
+Yikes! That's a lot of Resources.
+
+The complexity come from the way API Gateway integrates with Lambda.
+It creates a HTTP ANY endpoint, which then proxies the request as a POST to the Lambda function.
+Both of these endpoints have Resource type `AWS::ApiGateway::Method` -- That's why there seems to be so much duplication.
+
+Let's create some rudimentary tests for HelloService!
+
 Create the following test file: `/test/hello-service.test.ts`
 
+Copy these contents into it:
+
+```typescript
+import * as cdk from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { HelloService } from '../lib/constructs/hello-service/hello-service';
+
+test('HelloService Construct Test', () => {
+  // WHEN
+  
+  // Create empty stack with HelloService
+  const stack = new cdk.Stack();
+  new HelloService(stack, 'TestHelloService', {});
+
+  // THEN
+  // CDK Synthesized into a CloudFormation Template
+  const template = Template.fromStack(stack);
+
+  // Lambda
+  template.resourceCountIs('AWS::Lambda::Function', 1);
+  // more tests here!
+})
+```
+
+Now instead of testing AppStack, we have created an empty Stack that houses our HelloService Construct during the test. 
+So this is basically a unit test of our Construct. 
+
+Add the following assertions:
+- The Lambda function has the property `Runtime: "nodejs22.x"`
+- One `AWS::ApiGateway::RestApi` exists
+- One `AWS::ApiGateway::Deployment` exists
+- One `AWS::ApiGateway::Stage` exists
+- One `AWS::ApiGateway::Resource` exists
+- Two of `AWS::ApiGateway::Method` exist
+
+Run the tests and see that they pass.
+
+Well done!
 
 ### EXERCISE X: Deploy Item API
 
