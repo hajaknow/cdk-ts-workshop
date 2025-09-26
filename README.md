@@ -290,7 +290,8 @@ and everything should work fine.
 
 Unfortunately for us, LocalStack really sucks at updating existing stacks.
 
-With LocalStack, the only way forward is to destroy and redeploy our Stack, or the entire App, as we are about to do here!
+With LocalStack, the only way forward is to destroy and redeploy our Stack, 
+or the entire App, as we are about to do here!
 
 Idempotent deploys for the win, eh?
 
@@ -355,7 +356,12 @@ export class AppStack extends Stack {
 }
 ```
 
-Lambda functions support TypeScript, but in this example we will use JavaScript.
+This creates a 
+
+- **Lambda function** with Node runtime which is 
+- integrated to an **Api Gateway Endpoint**, so we can trigger the Lambda ourselves.
+
+Lambda function code supports also TypeScript, but in this example we will use JavaScript.
 
 Create a new folder `/lib/lambda-handler` and create a new file named `index.js` there with the following content:
 
@@ -382,6 +388,7 @@ exports.handler = async (event) => {
 Let's Redeploy 
 
 ```bash
+# This will take some time, as docker image for the Lambda will be built
 npm run cdklocal-redeploy
 ```
 
@@ -447,9 +454,9 @@ AWS best practise guidance for organisation is that
         - However, we've noticed that in the industry people don't use Stages, 
           but instead rely on flags and configuration files to create differences between Dev, Test, Prod etc.
 
-Beyond this, it's anybody's game. AWS has some 
-[instructions for large-scale projects](https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-cdk-typescript-iac/organizing-code-best-practices.html), 
-but that's really not helpful here.
+Beyond this, it's anybody's game. AWS has some [instructions for large-scale projects](
+  https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-cdk-typescript-iac/organizing-code-best-practices.html
+), but that's really not helpful here.
 
 Our advise is to organise it in the way that makes most sense to you and your team.
 
@@ -462,6 +469,8 @@ mkdir lib/constructs ;
 mkdir lib/stacks ;
 mkdir lib/stages ;
 ```
+
+Move the file `app-stack.ts` into `lib/stacks`. Don't forget to fix imports from wherever AppStack is called!
 
 Now onwards!
 
@@ -499,7 +508,7 @@ successful deployment! Cloud people call it `git-ops`, we developers just call i
 For this workshop, though, let's not worry about it.
 
 > **NOTE:**  
-> If your infrastructure gets too stuck and you can't destroy it with CDK anymore, simply terminate LocalStack  
+> If your infrastructure gets too stuck, and you can't destroy it with CDK anymore, simply terminate LocalStack  
 > by pressing `CTRL+C` in the LocalStack terminal or run `docker-compose down` in the root of the repo.  
 > Then you can start LocalStack from fresh, run `cdklocal bootstrap` and finally `cdklocal deploy --require-approval never`.
 
@@ -584,19 +593,29 @@ export class AppStack extends Stack {
 }
 ```
 
-### Exercise 9: Write tests for HelloService
+Deploy the App again with 
+
+```bash
+cdklocal deploy --require-approval never
+```
+
+
+## Exercise 9: Write tests for HelloService
 
 Run `cdklocal synth` or open `/cdk.out/AppStack.template.json` and see what kinds of new Resources were created.
 
 Yikes! That's a lot of Resources.
 
-The complexity come from the way API Gateway integrates with Lambda.
-It creates a HTTP ANY endpoint, which then proxies the request as a POST to the Lambda function.
-Both of these endpoints have Resource type `AWS::ApiGateway::Method` -- That's why there seems to be so much duplication.
+It creates two HTTP ANY-method endpoints, which proxy the request as a POST to the Lambda function.
 
-Let's create some rudimentary tests for HelloService!
+- One endpoint for the root path `/`
+- Another for `/{proxy+}`, so any path `/foo` and `/foo/bar` will also trigger the Lambda 
+ 
+Both of these endpoints have Resource type `AWS::ApiGateway::Method`.
 
-Create the following test file: `/test/hello-service.test.ts`
+Let's create some rudimentary tests for `HelloService`!
+
+Create the following test file: `test/hello-service.test.ts`
 
 Copy these contents into it:
 
@@ -619,7 +638,8 @@ test('HelloService Construct Test', () => {
 
   // Lambda
   template.resourceCountIs('AWS::Lambda::Function', 1);
-  // more tests here!
+  
+  // add more tests here!
 })
 ```
 
@@ -638,69 +658,154 @@ Run the tests and see that they pass.
 
 Well done!
 
-### EXERCISE X: Deploy Item API
+### Exercise 10: Deploy ItemsApi
 
-Copy `item-api.ts` from X ?????????
+At the root of this repository, you will find the `./resources` directory.
 
-It is a Construct with Rest API (API GW) -> Lambda -> DynamoDB
+Copy the contents of `./resources/items-api` into a new directory `./app/lib/constructs/items-api`
 
-Uncomment it in `app.ts`
+The directory `./app/lib/constructs/items-api` should now look like this:
 
-Before running the test requests, find our Api Gateway id with `npm run aws-apigateway-get-rest-apis`
-and replace the `<ApiGWId>` in the test requests
+```bash
+./app/lib/constructs/items-api
+├── items-api.ts
+└── lambda-handler
+    ├── create.ts
+    └── get-one.ts
+```
+
+We will also have to install our dependencies for the two Lambdas, run the following commands in the cdk root `app` directory.
+
+```bash
+npm install @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
+npm install
+```
+
+ItemsApi in `items-api.ts` is a Construct with a Rest API (API GW) that calls a Lambda which saves an item to a DynamoDB.
+We also have an endpoint for reading one item with its itemId.
+
+We will assume that ItemsApi is deployable by itself, and does not have dependencies to `AppStack`. So it should be 
+deployed as its own stack!
+
+Create a new Stack called `ItemsApiStack` into `lib/stacks/items-api-stack.ts` with the following content:
+
+```typescript
+import { Stack, StackProps } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import { ItemsApi } from '../constructs/items-api/items-api';
+
+export class ItemsApiStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
+    super(scope, id, props);
+    new ItemsApi(this, 'ItemsApi', {})
+  }
+}
+```
+
+Then let's add ItemStack into the CDK App in `bin/app.ts`.
+
+```typescript
+#!/usr/bin/env node
+import * as cdk from 'aws-cdk-lib';
+import { AppStack } from '../lib/stacks/app-stack';
+import { ItemsApiStack } from '../lib/stacks/items-api-stack';
+
+const app = new cdk.App();
+new AppStack(app, 'AppStack', {
+  env: {
+      account: '000000000000', // Default LocalStack accountId
+      region: 'eu-north-1',    // Stockholm rules !!
+    }
+});
+new ItemsApiStack(app, 'ItemsApiStack', {
+  env: {
+    account: '000000000000', // Default LocalStack accountId
+    region: 'eu-north-1',
+  }
+});
+```
+
+We don't need to tear down `AppStack`, because now we are deploying a totally new stack. However, now we do have to start specifying which Stack we are deploying.
+
+Deploy ItemsApiStack with:
+
+```bash
+# This will take some time, as docker images for the Lambdas will be built
+cdklocal deploy ItemsApiStack --require-approval never
+```
+
+Well done!
+
+## Exercise 11: Test ItemsApi
+
+ItemsApiStack should have outputted the ItemsApi Endpoint URL. 
+**Remember to append the path "`items`" to the end of it when testing!**
+
+If you don't find it, run `npm run aws-apigateway-get-rest-apis`, get the ApiGateway ID of ItemsApi, and replace the `<ApiGWId>` 
+in the following test requests.
 
 ```bash
 # Test requests:
 
-# 201 and returns itemId (UUID)
+# 201 and returns itemId (UUID) --> note URL ends with /items
 curl -v --header "Content-Type: application/json" \
   --request POST \
-  --data '{"itemId":"helloWorld"}' https://<ApiGWId>.execute-api.localhost.localstack.cloud:4566/prod/items
+  --data '{"itemId":"helloWorld"}' https://<ApiGWId>.execute-api.localhost.localstack.cloud:4566/prod/items 
   
-# copy the returned itemId (UUID)
+# copy the returned itemId (UUID) from the final line of the output, (e.g. fc7eeadb-a984-4262-8e59-26933ad98568)
   
-# 200 and returns item as json
-curl -v https://<ApiGWId>.execute-api.localhost.localstack.cloud:4566/prod/items/itemId
-  
+# 200 and returns item object as json (it only has itemId, don't worry about that!)
+curl -v https://<ApiGWId>.execute-api.localhost.localstack.cloud:4566/prod/items/<itemId>
 
 # "invalid request, you are missing the parameter body" (400)
 curl --header "Content-Type: application/json" \                   
   --request POST  https://<ApiGWId>.execute-api.localhost.localstack.cloud:4566/prod/items
   
 # Test dynamoDB has items:
-laws dynamodb scan --table-name items
-# OR
 npm run aws-dynamodb-scan-table-items
 ```
 
-## EXERCISE Y: Dev and Prod Stages
+Well done!
+
+## EXERCISE 12: Dev and Prod Stages
 
 The [CDK Stage](https://docs.aws.amazon.com/cdk/v2/guide/stages.html) represents a group of one or more CDK stacks
 that are configured to deploy together. Use stages to deploy the same grouping of stacks to multiple environments,
 such as development, testing, and production.
 
-0. Destroy the currently deployed stack with `cdklocal destroy --force`
-1. Create the class AppStage (that extends cdk.Stage) into a new file: `lib/stages/AppStage.ts`
-2. In the Stage constructor, create AppStack with the same logical id `AppStack`.
-3. Next let's create two stages: `Dev` and `Prod`!
+Let's pretend that AppStack is only used in Dev, and Prod has no need for it. This would be a good place to introduce
+`DevStage` and `ProdStage`!
+
+Do the following
+
+1. Destroy both currently deployed Stacks with `cdklocal destroy --all --force`
+2. Create the class DevStage (that extends cdk.Stage) into a new file: `lib/stages/DevStage.ts`
+3. Create the class ProdStage (that extends cdk.Stage) into a new file: `lib/stages/ProdStage.ts`
+4. In the DevStage constructor,  
+    - create AppStack with the same logical id `AppStack`
+    - cerate ItemsApiStack with the logical id `ItemsApiStack`
+5. In the ProdStage constructor, 
+  - ItemsApiStack with the logical id `ItemsApiStack`
+
 
 Replace the contents of `bin/app.ts` with the following code:
 
 ```typescript
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { AppStage } from "../lib/stages/AppStage";
+import { DevStage } from '../lib/stages/DevStage';
+import { ProdStage } from '../lib/stages/ProdStage';
 
 const app = new cdk.App();
 
-new AppStage(app, 'Dev', {
+new DevStage(app, 'Dev', {
   env: {
     account: "000000000000",
     region: "eu-north-1" // Stockholm region
   }
 })
 
-new AppStage(app, 'Prod', {
+new ProdStage(app, 'Prod', {
   env: {
     // Normally, prod account would be different from dev account
     // However, localStack makes cross-account work difficult for us
@@ -722,7 +827,7 @@ Deploy all stacks for both Dev and Prod Stages.
 ```bash
 cdklocal deploy --require-approval=never "Dev/*" "Prod/*"
 # "Stage/*" here means just AppStack, though, so this would be equivalent and more explicit:
-# cdklocal deploy --require-approval=never "Dev/AppStack" "Prod/AppStack"
+# cdklocal deploy --require-approval=never "Dev/AppStack" "Dev/ItemsApiStack" "Prod/ItemsApiStack"
 ```
 
 Verify that both Dev and Prod environments work by calling each of their ItemsApi POST and GET(-by-id) lambdas.
@@ -733,6 +838,17 @@ To access Prod by AWS CLI use the `--endpoint-url` and `--region` flags
 # For example, to scan Prod dynamodb table "items"
 aws --endpoint-url=http://localhost:4566 --region=eu-west-3 dynamodb scan --table-name items
 ```
+
+## Bonus exercise: Add more endpoints to ItemsApi
+
+This part is optional.
+
+Add whichever endpoints you want to ItemsApi! Some reasonable candidates might be the following:
+
+- Delete by Id
+- Get all items
+
+This means you may have to look at the DynamoDB SDK for Typescript.
 
 # After the exercises
 
